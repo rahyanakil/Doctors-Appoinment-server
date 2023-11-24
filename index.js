@@ -6,7 +6,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 //mongo client
 const { MongoClient, ServerApiVersion } = require('mongodb');
-// config file require
+// config file require to hide the pass and user
 require('dotenv').config()
 
 
