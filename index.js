@@ -1,6 +1,8 @@
 //require cors and express
 const express = require("express");
 const cors = require("cors");
+//jwt web token to secure data(refresh,access token)
+const jwt =require('jsonwebtoken');
 const app = express();
 //set port for backend port 5000
 const port = process.env.PORT || 5000;
@@ -12,9 +14,7 @@ require("dotenv").config();
 //middleware
 app.use(cors());
 app.use(express.json());
-
-console.log(process.env.DB_PASS);
-
+//db pass came from the .env file dynamically
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zruwsn2.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -26,6 +26,25 @@ const client = new MongoClient(uri, {
   },
 });
 
+//accessing jwt web token using backend api
+const verifyJWT = (req, res, next)=>{
+  console.log('hitting verify JWT')
+  console.log(req.headers.authorization);
+  const authorization =req.headers.authorization;
+  if(!authorization){
+    return res.status(401).send({error:true, message:'unauthorized access'})
+  }
+  const token=authorization.split(' ')[1];
+  console.log('token inside verify JWT' ,token);
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(error,decoded)=>{
+    if(error){
+      return res.status(403).send({error:true , message:'unauthorized access'})
+    }
+    req.decoded =decoded;
+    next()
+  })
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -36,11 +55,26 @@ async function run() {
       .db("doctorAppoint")
       .collection("checkout");
 
+      //JWT  requiring data from the frontend body in checkouts order list 
+      app.post ('/jwt',(req,res)=>{
+        const user =req.body;
+        console.log(user);
+        const token =jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
+          expiresIn:'1h'});
+          res.send({token});
+        
+      })
+
+
+
+//SERVIVES ROUTES
     app.get("/services", async (req, res) => {
       const cursor = serviceCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
+
+
 
     app.get("/services/:id", async (req, res) => {
       const id = req.params.id;
@@ -55,9 +89,10 @@ async function run() {
       res.send(result);
     });
 
-    //Check out portion in server side
-    app.get("/checkout", async (req, res) => {
-      console.log(req.query.email);
+
+
+    //Check out portion in server side ROUTES
+    app.get("/checkout", verifyJWT, async (req, res) => {
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
@@ -66,6 +101,8 @@ async function run() {
       res.send(result);
     });
 
+
+
     //(post method ==creating )insert a document in server side
     app.post("/checkout", async (req, res) => {
       const checkout = req.body;
@@ -73,8 +110,10 @@ async function run() {
       const result = await checkoutCollection.insertOne(checkout);
       res.send(result);
     });
+
+
     
-    //api for updation with patch method
+    //api for updatation with patch method
     app.patch('/checkout/:id',async(req,res)=>{
       const id =req.params.id;
       const filter ={_id: new ObjectId(id)};
@@ -88,6 +127,9 @@ async function run() {
       const result =await checkoutCollection.updateOne(filter,updateDoc);
       res.send(result);
     })
+
+
+
 //api for delete operation for delete in checkout part
     app.delete('/checkout/:id',async(req,res)=>{
       const id =req.params.id;
@@ -96,6 +138,7 @@ async function run() {
       res.send(result);
     })
     
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
