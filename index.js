@@ -27,23 +27,23 @@ const client = new MongoClient(uri, {
 });
 
 //accessing jwt web token using backend api
-const verifyJWT = (req, res, next)=>{
-  console.log('hitting verify JWT')
-  console.log(req.headers.authorization);
-  const authorization =req.headers.authorization;
+const verifyJWT  = (req,res,next)=>{
+  const authorization = req.headers.authorization;
   if(!authorization){
-    return res.status(401).send({error:true, message:'unauthorized access'})
+    return res.status(401).send({error:true,message:'unauthorized access'})
   }
-  const token=authorization.split(' ')[1];
-  console.log('token inside verify JWT' ,token);
-  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(error,decoded)=>{
-    if(error){
-      return res.status(403).send({error:true , message:'unauthorized access'})
+  const token =authorization.split(' ')[1];
+  jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+    if(err){
+      return res.status(401).send({error:true,message:'unauthorized access'})
     }
     req.decoded =decoded;
-    next()
+    next();
   })
+  
+
 }
+
 
 async function run() {
   try {
@@ -51,11 +51,9 @@ async function run() {
     await client.connect();
 
     const serviceCollection = client.db("doctorAppoint").collection("services");
-    const checkoutCollection = client
-      .db("doctorAppoint")
-      .collection("checkout");
+    const checkoutCollection = client.db("doctorAppoint").collection("checkout");
 
-      //JWT  requiring data from the frontend body in checkouts order list 
+      //JWT  requiring data from the frontend body in checkouts order list  and posting it 
       app.post ('/jwt',(req,res)=>{
         const user =req.body;
         console.log(user);
@@ -91,8 +89,14 @@ async function run() {
 
 
 
-    //Check out portion in server side ROUTES
-    app.get("/checkout", verifyJWT, async (req, res) => {
+    //Check out portion in server side ROUTES and also implementing the jwt web-token from the backend site
+    app.get("/checkout",verifyJWT, async (req, res) => {
+      const decoded =req.decoded;
+      console.log('comeback after verify',decoded)
+if(decoded.email !== req.query.email){
+  return res.status(403).send({error:1,message:'forbidden access'})
+}
+
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
@@ -157,5 +161,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Car Doctor Server is running on port ${port}`);
+  console.log(`Doctors appoinment Booking Server is running on port ${port}`);
 });
