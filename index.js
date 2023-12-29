@@ -37,7 +37,7 @@ const verifyJWT  = (req,res,next)=>{
     if(err){
       return res.status(401).send({error:true,message:'unauthorized access'})
     }
-    req.decoded =decoded;
+    req.decoded =decoded; 
     next();
   })
   
@@ -52,6 +52,8 @@ async function run() {
 
     const serviceCollection = client.db("doctorAppoint").collection("services");
     const checkoutCollection = client.db("doctorAppoint").collection("checkout");
+    // const doctorCollection = client.db("doctorAppoint").collection("doctors");
+    const doctorCollection = client.db("doctorAppoint").collection("doctor");
 
       //JWT  requiring data from the frontend body in checkouts order list  and posting it 
       app.post ('/jwt',(req,res)=>{
@@ -62,13 +64,20 @@ async function run() {
           res.send({token});
         
       })
+//getting doctors details from doctors routes
+ app.get('/doctors',async(req,res)=>{
+  const cursor = doctorCollection.find();
+  const result =await cursor.toArray();
+  console.log(result)
+  res.send(result);
+ });
 
 
-
-//SERVIVES ROUTES
+//getting SERVIVES from services ROUTES
     app.get("/services", async (req, res) => {
       const cursor = serviceCollection.find();
       const result = await cursor.toArray();
+      
       res.send(result);
     });
 
